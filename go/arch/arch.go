@@ -12,6 +12,7 @@ import (
 	"github.com/lunixbochs/usercorn/go/arch/x86"
 	"github.com/lunixbochs/usercorn/go/arch/x86_16"
 	"github.com/lunixbochs/usercorn/go/arch/x86_64"
+	"github.com/lunixbochs/usercorn/go/arch/sms"
 	"github.com/lunixbochs/usercorn/go/models"
 )
 
@@ -25,6 +26,7 @@ var archMap = map[string]*models.Arch{
 	"x86":    x86.Arch,
 	"x86_16": x86_16.Arch,
 	"x86_64": x86_64.Arch,
+    "sms": sms.Arch,
 }
 
 func GetArch(name, os string) (*models.Arch, *models.OS, error) {

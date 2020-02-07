@@ -36,7 +36,9 @@ func LoadArch(r io.ReaderAt, arch string) (models.Loader, error) {
 		return NewCgcLoader(r, arch)
 	} else if MatchNdh(r) {
 		return NewNdhLoader(r, arch)
-	} else {
+	} else if MatchSMS(r) {
+        return NewSMSLoader(r)
+    } else {
 		return nil, errors.WithStack(UnknownMagic)
 	}
 }
