@@ -26,6 +26,12 @@ const (
 )
 
 const (
+    INT_MODE_0 = iota
+    INT_MODE_1
+    INT_MODE_2
+)
+
+const (
     OP_NOP = iota
     OP_LD
     OP_INC
@@ -56,12 +62,13 @@ const (
     OP_CALL
     OP_PUSH
     OP_RST
-    OP_IDKYET
+    OP_UNDOC
     OP_OUT
     OP_EXX
     OP_IN
     OP_DI
     OP_EI
+    OP_IM
 )
 
 var OperationMap = map[uint8]int{
@@ -268,7 +275,7 @@ var OperationMap = map[uint8]int{
     0xc8: OP_RET,
     0xc9: OP_RET,
     0xca: OP_JP,
-    0xcb: OP_IDKYET,
+    0xcb: OP_UNDOC,
     0xcc: OP_CALL,
     0xcd: OP_CALL,
     0xce: OP_ADC,
@@ -286,7 +293,7 @@ var OperationMap = map[uint8]int{
     0xda: OP_JP,
     0xdb: OP_IN,
     0xdc: OP_CALL,
-    0xdd: OP_IDKYET,
+    0xdd: OP_UNDOC,
     0xde: OP_SBC,
     0xdf: OP_RST,
     0xe0: OP_RET,
@@ -302,7 +309,7 @@ var OperationMap = map[uint8]int{
     0xea: OP_JP,
     0xeb: OP_EX,
     0xec: OP_CALL,
-    0xed: OP_IDKYET,
+    0xed: OP_IM,
     0xee: OP_XOR,
     0xef: OP_RST,
     0xf0: OP_RET,
@@ -318,7 +325,7 @@ var OperationMap = map[uint8]int{
     0xfa: OP_JP,
     0xfb: OP_EI,
     0xfc: OP_CALL,
-    0xfd: OP_IDKYET,
+    0xfd: OP_UNDOC,
     0xfe: OP_CP,
     0xff: OP_RST,
 }
