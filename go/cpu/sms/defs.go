@@ -68,7 +68,7 @@ const (
     OP_IN
     OP_DI
     OP_EI
-    OP_IM
+    OP_MISC
 )
 
 var OperationMap = map[uint8]int{
@@ -309,7 +309,7 @@ var OperationMap = map[uint8]int{
     0xea: OP_JP,
     0xeb: OP_EX,
     0xec: OP_CALL,
-    0xed: OP_IM,
+    0xed: OP_MISC,
     0xee: OP_XOR,
     0xef: OP_RST,
     0xf0: OP_RET,

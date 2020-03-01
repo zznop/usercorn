@@ -15,12 +15,23 @@ type IntInfo struct {
     mode int
 }
 
+// Flags is a struct that stores state of condition bits (flags)
+type Flags struct {
+    S bool
+    Z bool
+    H bool
+    PV bool
+    N bool
+    C bool
+}
+
 // SMSCpu is a struct for maintaining state and emulating the SMS Z80 processor
 type SMSCpu struct {
     *cpu.Hooks
     *cpu.Regs
     *cpu.Mem
     pc uint64
+    flag Flags
     interrupt IntInfo
     exitRequest bool
     err error
@@ -43,8 +54,39 @@ func (b *Builder) New() (cpu.Cpu, error) {
     return c, nil
 }
 
-// instrIM emulates the Z80 "im" instruction
-func (s *SMSCpu) instrIM() (int, uint64, error) {
+// instrOTIR emulates the Z80 "otir" instruction
+func (s *SMSCpu) instrOTIR() (int, uint64, error) {
+    b, _ := s.RegRead(B)
+    h, _ := s.RegRead(H)
+    l, _ := s.RegRead(L)
+
+    // Get byte pointer to by hl
+    addr := (uint16(h) << 8) | uint16(l)
+    val, err := s.ReadProt(uint64(addr), 1, cpu.PROT_EXEC)
+    if err != nil {
+        return 0, 0, err
+    }
+    s.RegWrite(C, uint64(val[0]))
+
+    // Increment hl
+    addr += 1
+    s.RegWrite(H, uint64((addr >> 8) & 0xff))
+    s.RegWrite(L, uint64(addr & 0xff))
+
+    // Decrement b and set flags accordingly
+    b -= 1
+    s.RegWrite(B, b)
+    if b == 0 {
+        s.flag.Z = true
+    } else {
+        s.flag.Z = false
+    }
+    s.flag.N = true
+    return 2, 5, nil
+}
+
+// instrMisc emulates the Z80 "im" instruction
+func (s *SMSCpu) instrMisc() (int, uint64, error) {
     b, err := s.ReadProt(s.pc+1, 1, cpu.PROT_EXEC)
     if err != nil {
         return 0, 0, err
@@ -56,6 +98,8 @@ func (s *SMSCpu) instrIM() (int, uint64, error) {
         s.interrupt.mode = INT_MODE_1
     case 0x5e: // im 2
         s.interrupt.mode = INT_MODE_2
+    case 0xb3: // otir
+        return s.instrOTIR()
     default:
         panic("Unsupported interrupt mode!?")
     }
@@ -78,6 +122,51 @@ func (s *SMSCpu) instrJP(opcode uint8) (int, uint64, error) {
     }
 }
 
+// instrLD_r_n emulates the ld r, n addressing mode
+func (s *SMSCpu) instrLD_r_n(reg int) (int, uint64, error) {
+    b, err := s.ReadProt(s.pc+1, 1, cpu.PROT_EXEC)
+    if err != nil {
+        return 0, 0, err
+    }
+    s.RegWrite(reg, uint64(b[0]))
+    return 2, 2, nil
+}
+
+// instrLD_rr_nn emulates the ld r, nn addressing mode
+func (s *SMSCpu) instrLD_rr_nn(reg0 int, reg1 int) (int, uint64, error) {
+    b, err := s.ReadProt(s.pc+1, 2, cpu.PROT_EXEC)
+    if err != nil {
+        return 0, 0, err
+    }
+    s.RegWrite(reg0, uint64(b[1]))
+    s.RegWrite(reg1, uint64(b[0]))
+    return 3, 2, nil
+}
+
+// instrLD emulates Z80 load (ld) instructions
+func (s *SMSCpu) instrLD(opcode uint8) (int, uint64, error) {
+    switch opcode {
+    case 0x31: // ld sp, nn
+        b, err := s.ReadProt(s.pc+1, 2, cpu.PROT_EXEC)
+        if err != nil {
+            return 0, 0, err
+        }
+        nn := binary.LittleEndian.Uint16(b)
+        s.RegWrite(SP, uint64(nn))
+        return 3, 2, nil
+    case 0x21: // ld hl, nn
+        return s.instrLD_rr_nn(H, L)
+    case 0x3e: // ld a, n
+        return s.instrLD_r_n(A)
+    case 0x06: // ld b, n
+        return s.instrLD_r_n(B)
+    case 0x0e: // ld c, n
+        return s.instrLD_r_n(C)
+    default:
+        panic("Unsupported ld addressing mode")
+    }
+}
+
 // Dispatch is a SMSCpu method for dispatching each generic operation handler
 func (s *SMSCpu) Dispatch(opcode uint8) (int, uint64, error) {
     operation := OperationMap[opcode]
@@ -87,6 +176,7 @@ func (s *SMSCpu) Dispatch(opcode uint8) (int, uint64, error) {
         return 1, 1, nil
     case OP_LD:
         fmt.Println("ld")
+        return s.instrLD(opcode)
     case OP_INC:
         fmt.Println("inc")
     case OP_DEC:
@@ -160,9 +250,9 @@ func (s *SMSCpu) Dispatch(opcode uint8) (int, uint64, error) {
         fmt.Println("ei")
         s.interrupt.enabled = true
         return 1, 1, nil
-    case OP_IM:
-        fmt.Println("im")
-        return s.instrIM()
+    case OP_MISC:
+        fmt.Println("misc")
+        return s.instrMisc()
     }
     panic("Unsupported Z80 operation!?")
 }
